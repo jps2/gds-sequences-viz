@@ -1,0 +1,22 @@
+{
+  "name": "Path sequence viz - sunburst",
+  "logoUrl": "http://www.google.com",
+  "organization": "Data Studio Developer Relations",
+  "supportUrl": "https://datastudio.google.com",
+  "packageUrl": "https://datastudio.google.com",
+  "description": "Viz for top conversion paths",
+  "devMode": true,
+  "components": [
+    {
+      "name": "conversion_paths",
+      "description": "Viz for top conversion paths",
+      "iconUrl": "https://url",
+      "devMode": true,
+      "resource": {
+          "js": "gs://path-sequence-viz/index.js",
+          "config": "gs://path-sequence-viz/index.json",
+          "css": "gs://path-sequence-viz/index.css"
+      }
+    }
+  ]
+}

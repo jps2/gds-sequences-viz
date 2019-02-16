@@ -1,0 +1,18 @@
+body {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+  }
+   
+  #legend {
+    padding: 10px 0 0 3px;
+  }
+  
+  #sequence text, #legend text {
+    font-weight: 500;
+    fill: #fff;
+  }
+  
+  #chart path {
+    stroke: #fff;
+  }

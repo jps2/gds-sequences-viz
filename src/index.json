@@ -1,0 +1,43 @@
+{
+  "data": [
+    {
+      "id": "concepts",
+      "label": "Path sequence sunburst-viz",
+      "elements": [
+        {
+          "id": "sequences",
+          "label": "Path sequence",
+          "type": "DIMENSION",
+          "options": {
+            "min": 1,
+            "max":1,
+            "supportedTypes": ["DEFAULT"]
+          }
+        },
+        {
+          "id": "goals",
+          "label": "Goals",
+          "type": "METRIC",
+          "options": {
+            "min": 1,
+            "max": 2
+          }
+        }
+      ]
+    }
+  ],
+  "style": [
+    {
+      "id": "colors",
+      "heading": "Colors",
+      "elements": [
+        {
+          "id": "barColor",
+          "label": "Bar Color",
+          "type": "FILL_COLOR",
+          "defaultValue": "#4682B4"
+        }
+      ]
+    }
+  ]
+}

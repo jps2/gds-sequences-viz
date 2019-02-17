@@ -9,7 +9,12 @@ import { transition } from "d3-transition";
 import * as arr from "d3-array";
 import { rgb } from "d3-color";
 import { select, selectAll } from 'd3-selection';
-import { schemeSet1 } from "d3-scale-chromatic";
+import {
+  schemeSet1,
+  schemeAccent,
+  schemeDark2,
+  schemePaired
+} from "d3-scale-chromatic";
 
 const d3 = Object.assign(
   {},
@@ -22,7 +27,10 @@ const d3 = Object.assign(
     partition,
     hierarchy,
     transition,
-    schemeSet1
+    schemeSet1,
+    schemeDark2,
+    schemeAccent,
+    schemePaired
   },
   fmt,
   arr
@@ -44,14 +52,26 @@ var goal_name; // get primary goal name from the fields
 var goal_name_secondary; // secondary goal 
 var valuekiloFormat = d3.format(".3s")
 var valueFormat = d3.format(".0f")
+var base_font, base_font_color, base_font_size;
+var bc_font_size, bc_font_color, color_scheme;
 
 function drawViz(data) {
   var dataByConfigId = data.tables.DEFAULT;
   var fieldsByConfigId = data.fields;
   var styleByConfigId = data.style; // add when time :-)
+  //console.log(styleByConfigId);
   goal_name = fieldsByConfigId.goals[0].name.toLowerCase() // primary goal
   // if two goals add it
   goal_name_secondary = fieldsByConfigId.goals.length == 2 ? fieldsByConfigId.goals[1].name.toLowerCase() : undefined;
+
+  // style settings
+  base_font = styleByConfigId.base_font.value !== undefined ? styleByConfigId.base_font.value : styleByConfigId.base_font.defaultValue
+  base_font_size = styleByConfigId.base_font_size.value !== undefined ? styleByConfigId.base_font_size.value : styleByConfigId.base_font_size.defaultValue
+  base_font_color = styleByConfigId.base_font_color.value.color !== undefined ? styleByConfigId.base_font_color.value.color : styleByConfigId.base_font_color.defaultValue
+  bc_font_size = styleByConfigId.bc_font_size.value !== undefined ? styleByConfigId.bc_font_size.value : styleByConfigId.bc_font_size.defaultValue
+  bc_font_color = styleByConfigId.bc_font_color.value.color !== undefined ? styleByConfigId.bc_font_color.value.color : styleByConfigId.bc_font_color.defaultValue
+  color_scheme = styleByConfigId.color_scheme.value !== undefined ? styleByConfigId.color_scheme.value : styleByConfigId.color_scheme.defaultValue
+
   // obtain the height and width to scale your visualization appropriately
   var rect_base = Math.min(document.documentElement.clientHeight, dscc.getWidth())
   height = rect_base - margin.top - margin.bottom;
@@ -90,11 +110,32 @@ function drawViz(data) {
   createVisualization(seq_hierarchy);
 }
 
+function getScheme(scheme) {
+  var selected_scheme
+  switch (scheme) {
+    case "schemeSet1":
+      selected_scheme = d3.schemeSet1;
+      break;
+    case "schemePaired":
+      selected_scheme = d3.schemePaired;
+      break;
+    case "schemeAccent":
+      selected_scheme = d3.schemeAccent;
+      break;
+    case "schemeDark2":
+      selected_scheme = d3.schemeDark2;
+      break;
+    default:
+      selected_scheme = d3.schemeSet1;
+  }
+  return selected_scheme
+}
+
 function createVisualization(json) {
 
   var myColor = d3.scaleOrdinal()
     .domain(cats)
-    .range(d3.schemeSet1);
+    .range(getScheme(color_scheme));
 
   var vis = d3.select("#chart")
     .append("svg:svg")
@@ -149,37 +190,31 @@ function createVisualization(json) {
   // Get total size of the tree = value of root node from partition.
   totalSize = path.datum().value;
 
-  drawText({ select: ".pct", o_class: "pct", fontsize: "3em", text: valuekiloFormat(totalSize), y_corr: 2.2 });
+  drawText({ select: ".pct", o_class: "pct", fontsize: base_font_size * 4 + 'px', text: valuekiloFormat(totalSize), y_corr: 2.2 });
   drawText({
     select: ".exp",
     o_class: "exp",
-    fontsize: "1.1em",
+    fontsize: base_font_size * 1 + 'px',
     text: goal_name + ' in all paths',
     y_corr: 2
   });
   drawText({
     select: ".exp",
     o_class: "exp",
-    fontsize: "1.1em",
+    fontsize: base_font_size * 1 + 'px',
     text: goal_name_secondary,
     y_corr: 1.9
   });
-  
-  var all_sum;
+
   function mouseover(d) {
-    // legend toggle on config
-    // font size on style settings
-    // three predefined color schemes, one custom and 
-    // clean the width heigth shit
     function arraySum(obj) {
       var all_sum = 0;
-        if(Array.isArray(obj.children)) {
-            for(let i=0; i<obj.children.length; i++) {
-                all_sum += arraySum(obj.children[i])
-            }
-        } else if (typeof obj.cvalue === 'number') {
-          all_sum += obj.cvalue;
-          //console.log(all_sum)
+      if (Array.isArray(obj.children)) {
+        for (let i = 0; i < obj.children.length; i++) {
+          all_sum += arraySum(obj.children[i])
+        }
+      } else if (typeof obj.cvalue === 'number') {
+        all_sum += obj.cvalue;
       }
       return all_sum;
     }
@@ -189,7 +224,7 @@ function createVisualization(json) {
     if (percentage < 0.001) {
       percentageString = "< 0.1%";
     }
-    
+
     path_value = valuekiloFormat(arraySum(d.data));
     if (d.value > 1000) {
       path_size = valuekiloFormat(d.value);
@@ -201,25 +236,24 @@ function createVisualization(json) {
       .remove()
     d3.selectAll('.exp')
       .remove()
-    drawText({ select: ".pct", o_class: "pct", fontsize: "3em", text: path_size, y_corr: 2.2 });
+    drawText({ select: ".pct", o_class: "pct", fontsize: base_font_size * 4 + 'px', text: path_size, y_corr: 2.2 });
     drawText({
       select: ".exp",
       o_class: "exp",
-      fontsize: "1.1em",
-      text: percentageString + ' of ' + goal_name +', ' + path_value + ' €',
+      fontsize: base_font_size * 1 + 'px',
+      text: percentageString + ' of ' + goal_name + ', ' + path_value + ' €',
       y_corr: 2
     });
     drawText({
       select: ".exp",
       o_class: "exp",
-      fontsize: "1.1em",
+      fontsize: base_font_size * 1 + 'px',
       text: 'in this path sequence',
       y_corr: 1.9
     });
 
     var sequenceArray = d.ancestors().reverse();
     sequenceArray.shift(); // remove root node from the array
-   // console.log(sequenceArray);
     updateBreadcrumbs(sequenceArray, path_size + " " + goal_name);
 
     // Fade all the segments.
@@ -246,8 +280,8 @@ function createVisualization(json) {
       .remove()
     d3.selectAll('.exp')
       .remove()
-    drawText({ select: ".pct", o_class: "pct", fontsize: "3em", text: valuekiloFormat(totalSize), y_corr: 2.2 });
-    drawText({ select: ".exp", o_class: "exp", fontsize: "1.1em", text: goal_name + ' in all paths', y_corr: 2 });
+    drawText({ select: ".pct", o_class: "pct", fontsize: base_font_size * 4 + 'px', text: valuekiloFormat(totalSize), y_corr: 2.2 });
+    drawText({ select: ".exp", o_class: "exp", fontsize: base_font_size * 1 + 'px', text: goal_name + ' in all paths', y_corr: 2 });
 
     // Transition each segment to full opacity and then reactivate it.
     d3.selectAll("path")
@@ -310,6 +344,9 @@ function createVisualization(json) {
       .attr("y", b.h / 2)
       .attr("dy", "0.35em")
       .attr("text-anchor", "middle")
+      .attr('font-family', base_font)
+      .attr("font-size", bc_font_size)
+      .style('fill', bc_font_color)
       .text(function (d) { return d.data.name; });
 
     // Merge enter and update selections; set position for all nodes.
@@ -323,7 +360,9 @@ function createVisualization(json) {
       .attr("y", b.h / 2)
       .attr("dy", "0.35em")
       .attr("text-anchor", "start")
-      .style('fill', "#666666")
+      .attr('font-family', base_font)
+      .attr("font-size", bc_font_size)
+      .style('fill', base_font_color)
       .text(percentageString);
 
     // Make the breadcrumb trail visible, if it's hidden.
@@ -334,10 +373,13 @@ function createVisualization(json) {
 };
 
 function drawText(params) {
+  // function(d){return d3.rgb(d.color).darker(1);})
   d3.select("#chart > svg")
     .append('text')
     .attr('class', params.o_class)
     .attr("text-anchor", "middle")
+    .attr('font-family', base_font)
+    .attr('fill', base_font_color)
     .attr("font-size", params.fontsize)
     .text(params.text)
     .attr('x', (Math.min(width, height) + margin.left) / 2)
@@ -381,7 +423,7 @@ function buildHierarchy(parsedData) {
   var root = { "name": "root", "children": [] };
   for (var i = 0; i < parsedData.length; i++) {
     var sequence = parsedData[i]['path_sequence'];
-    var regex = / [Ss]earch/gi;
+    var regex = / [Ss]earch/gi; // shorten 'Paid Search' & 'Organic Search' labels
     sequence = sequence.replace(regex, '')
     var size = +parsedData[i]['goal1'];
     // add if secondary goal defined

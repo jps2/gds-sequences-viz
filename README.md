@@ -13,8 +13,8 @@ The dimension currently works only with GA's format where sequences are separate
 TODO:  
 
 - add option to select depth of paths to be shown (now fixed to 6 plus end node)  
-- add style configurations: base font, font-size  
-- add color schemes selection  
+- DONE: add style configurations: base font, font-size  
+- DONE: add color schemes selection  
 - fix suboptimal size (svg width and height)  
 - clean up messy code  
 - add build scripts for development and production separately  

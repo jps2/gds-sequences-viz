@@ -15,7 +15,7 @@ TODO:
 - add option to select depth of paths to be shown (now fixed to 6 plus end node)  
 - DONE: add style configurations: base font, font-size  
 - DONE: add color schemes selection  
-- fix suboptimal size (svg width and height)  
-- clean up messy code  
+- DONE: fix suboptimal size (svg width and height)  
+- PARTLY DONE: clean up messy code  
 - add build scripts for development and production separately  
-- add legend toggle to style configuration
+- DONE: add legend toggle to style configuration

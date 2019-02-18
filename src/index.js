@@ -36,7 +36,7 @@ const d3 = Object.assign(
   arr
 )
 
-var margin = { top: 10, right: 10, bottom: 10, left: 10 }
+var margin = { top: 20, right: 10, bottom: 10, left: 10 }
 var width, height, radius;
 
 // Breadcrumb dimensions: width, height, spacing, width of tip/tail.
@@ -44,9 +44,15 @@ var b = {
   w: 75, h: 30, s: 3, t: 10
 };
 
+// Dimensions of legend item: width, height, spacing, radius of rounded rect.
+var li = {
+  w: 65, h: 20, s: 3, r: 3
+};
+
 var totalSize = 0; // total of primary goal
 var path_size = 0; // total of goal in segment
-var tot_value, path_value = 0;
+var tot_cvalue = 0;
+var path_value = 0;
 var cats = []; // unique categories
 var goal_name; // get primary goal name from the fields
 var goal_name_secondary; // secondary goal 
@@ -54,12 +60,16 @@ var valuekiloFormat = d3.format(".3s")
 var valueFormat = d3.format(".0f")
 var base_font, base_font_color, base_font_size;
 var bc_font_size, bc_font_color, color_scheme;
+var gds_height, gds_width, rect_base
+var myColor
+var show_legend
 
 function drawViz(data) {
+
   var dataByConfigId = data.tables.DEFAULT;
   var fieldsByConfigId = data.fields;
-  var styleByConfigId = data.style; // add when time :-)
-  //console.log(styleByConfigId);
+  var styleByConfigId = data.style;
+  //console.log(styleByConfigId)
   goal_name = fieldsByConfigId.goals[0].name.toLowerCase() // primary goal
   // if two goals add it
   goal_name_secondary = fieldsByConfigId.goals.length == 2 ? fieldsByConfigId.goals[1].name.toLowerCase() : undefined;
@@ -71,12 +81,28 @@ function drawViz(data) {
   bc_font_size = styleByConfigId.bc_font_size.value !== undefined ? styleByConfigId.bc_font_size.value : styleByConfigId.bc_font_size.defaultValue
   bc_font_color = styleByConfigId.bc_font_color.value.color !== undefined ? styleByConfigId.bc_font_color.value.color : styleByConfigId.bc_font_color.defaultValue
   color_scheme = styleByConfigId.color_scheme.value !== undefined ? styleByConfigId.color_scheme.value : styleByConfigId.color_scheme.defaultValue
+  show_legend = styleByConfigId.show_legend.value !== undefined ? styleByConfigId.show_legend.value : styleByConfigId.show_legend.defaultValue
+  // read data
+  var parsedData = dataByConfigId.map(function (d) {
+    return {
+      path_sequence: d['sequences'][0],
+      goal1: +d.goals[0],
+      goal2: +d.goals[1]
+    };
+  });
+  tot_cvalue = 0; // have to reset, if metrics changed
+  var seq_hierarchy = buildHierarchy(parsedData); // data to hierarchy
+  cats = [...new Set(cats.map(item => item))]; // reduce to unique categories
 
   // obtain the height and width to scale your visualization appropriately
-  var rect_base = Math.min(document.documentElement.clientHeight, dscc.getWidth())
-  height = rect_base - margin.top - margin.bottom;
-  width = rect_base - margin.left - margin.right;
+  gds_height = dscc.getHeight() // whole viz height and width
+  gds_width = dscc.getWidth()
+
+  // for the sunburst rect
+  height = gds_height - margin.top - margin.bottom - b.h;
+  width = gds_width - margin.left - margin.right - li.w;
   radius = Math.min(width, height) / 2;
+  rect_base = Math.min(width, height)
 
   d3.select('body')
     .selectAll('svg')
@@ -86,10 +112,21 @@ function drawViz(data) {
     .selectAll('#explanation')
     .remove();
 
+    d3.select('body')
+    .selectAll('div')
+    .remove();  
+
   var div_data = [
-    { "id": "sequence", "height": b.h, "width": dscc.getWidth() },
-    { "id": "chart", "height": (Math.min(width, height) + margin.top + margin.bottom - b.h), "width": (Math.min(width, height) + margin.left + margin.right) }
+    { "id": "sequence", "height": b.h, "width": gds_width },
+    { "id": "chart_row", "height": (height + margin.top + margin.bottom), "width": (gds_width ) }
   ]
+
+    var divchart_data = [
+      { "id": "chart", "height": (height + margin.top + margin.bottom), "width": (rect_base + margin.left) },
+      { "id": "legend", "height": (height + margin.top + margin.bottom), "width": (li.w + margin.right) }
+    ]
+
+
 
   var grid = d3.select("body")
     .selectAll('div')
@@ -98,15 +135,13 @@ function drawViz(data) {
     .attr('id', function (d) { return d.id })
     .attr('style', function (d) { return 'height: ' + d.height + 'px; width: ' + d.width + 'px;' })
 
-  var parsedData = dataByConfigId.map(function (d) {
-    return {
-      path_sequence: d['sequences'][0],
-      goal1: +d.goals[0],
-      goal2: +d.goals[1]
-    };
-  });
-  var seq_hierarchy = buildHierarchy(parsedData);
-  cats = [...new Set(cats.map(item => item))]; // reduce to unique categories
+  var grid_chart = d3.select("#chart_row")
+    .selectAll('div')
+    .data(divchart_data).enter()
+    .append('div')
+    .attr('id', function (d) { return d.id })
+    .attr('style', function (d) { return 'height: ' + d.height + 'px; width: ' + d.width + 'px;' })
+
   createVisualization(seq_hierarchy);
 }
 
@@ -133,17 +168,17 @@ function getScheme(scheme) {
 
 function createVisualization(json) {
 
-  var myColor = d3.scaleOrdinal()
+  myColor = d3.scaleOrdinal()
     .domain(cats)
     .range(getScheme(color_scheme));
 
   var vis = d3.select("#chart")
     .append("svg:svg")
-    .attr("width", (Math.min(width, height) + margin.left + margin.right))
-    .attr("height", (Math.min(width, height) + margin.top + margin.bottom - b.h))
+    .attr("width", (rect_base + margin.left))
+    .attr("height", (rect_base + margin.top))
     .append("svg:g")
     .attr("id", "container")
-    .attr("transform", "translate(" + (Math.min(width, height) + margin.left) / 2 + "," + (Math.min(width, height) + margin.top - b.h) / 2 + ")");
+    .attr("transform", "translate(" + (rect_base + margin.left) / 2 + "," + (rect_base / 2 + margin.top)+ ")");
 
   var partition = d3.partition()
     .size([2 * Math.PI, radius * radius]);
@@ -155,7 +190,7 @@ function createVisualization(json) {
     .outerRadius(function (d) { return Math.sqrt(d.y1); });
 
   initializeBreadcrumbTrail();
-  //drawLegend();
+
 
   // Bounding circle underneath the sunburst, to make it easier to detect
   // when the mouse leaves the parent g.
@@ -189,23 +224,26 @@ function createVisualization(json) {
 
   // Get total size of the tree = value of root node from partition.
   totalSize = path.datum().value;
-
-  drawText({ select: ".pct", o_class: "pct", fontsize: base_font_size * 4 + 'px', text: valuekiloFormat(totalSize), y_corr: 2.2 });
+  if (show_legend) {
+    drawLegend();
+  }
+  drawText({ select: ".pct", o_class: "pct", fontsize: base_font_size * 4 + 'px', text: valuekiloFormat(totalSize), y_corr: 2 });
   drawText({
     select: ".exp",
     o_class: "exp",
     fontsize: base_font_size * 1 + 'px',
     text: goal_name + ' in all paths',
-    y_corr: 2
+    y_corr: 1.8
   });
-  drawText({
-    select: ".exp",
-    o_class: "exp",
-    fontsize: base_font_size * 1 + 'px',
-    text: goal_name_secondary,
-    y_corr: 1.9
-  });
-
+  if (goal_name_secondary !== undefined) {
+    drawText({
+      select: ".exp",
+      o_class: "exp",
+      fontsize: base_font_size * 1 + 'px',
+      text: valuekiloFormat(tot_cvalue) + ' €',
+      y_corr: 1.7
+    });
+  }
   function mouseover(d) {
     function arraySum(obj) {
       var all_sum = 0;
@@ -236,20 +274,25 @@ function createVisualization(json) {
       .remove()
     d3.selectAll('.exp')
       .remove()
-    drawText({ select: ".pct", o_class: "pct", fontsize: base_font_size * 4 + 'px', text: path_size, y_corr: 2.2 });
+    drawText({ select: ".pct", o_class: "pct", fontsize: base_font_size * 4 + 'px', text: path_size, y_corr: 2 });
+    if (goal_name_secondary !== undefined) {
+      var valp_string = ', ' + path_value + ' €'
+    } else {
+      var valp_string = ''
+    }
     drawText({
       select: ".exp",
       o_class: "exp",
       fontsize: base_font_size * 1 + 'px',
-      text: percentageString + ' of ' + goal_name + ', ' + path_value + ' €',
-      y_corr: 2
+      text: percentageString + ' of ' + goal_name + valp_string,
+      y_corr: 1.8
     });
     drawText({
       select: ".exp",
       o_class: "exp",
       fontsize: base_font_size * 1 + 'px',
       text: 'in this path sequence',
-      y_corr: 1.9
+      y_corr: 1.7
     });
 
     var sequenceArray = d.ancestors().reverse();
@@ -280,8 +323,14 @@ function createVisualization(json) {
       .remove()
     d3.selectAll('.exp')
       .remove()
-    drawText({ select: ".pct", o_class: "pct", fontsize: base_font_size * 4 + 'px', text: valuekiloFormat(totalSize), y_corr: 2.2 });
-    drawText({ select: ".exp", o_class: "exp", fontsize: base_font_size * 1 + 'px', text: goal_name + ' in all paths', y_corr: 2 });
+    drawText({ select: ".pct", o_class: "pct", fontsize: base_font_size * 4 + 'px', text: valuekiloFormat(totalSize), y_corr: 2 });
+    drawText({ select: ".exp", o_class: "exp", fontsize: base_font_size * 1 + 'px', text: goal_name + ' in all paths', y_corr: 1.8 });
+    if (goal_name_secondary !== undefined) {
+      var val_string = valuekiloFormat(tot_cvalue) + ' €'
+    } else {
+      var val_string = ''
+    }
+    drawText({ select: ".exp", o_class: "exp", fontsize: base_font_size * 1 + 'px', text: val_string, y_corr: 1.7 });
 
     // Transition each segment to full opacity and then reactivate it.
     d3.selectAll("path")
@@ -294,12 +343,11 @@ function createVisualization(json) {
 
   }
 
-
   function initializeBreadcrumbTrail() {
     // Add the svg area.
     var trail = d3.select("#sequence").append("svg:svg")
-      .attr("width", dscc.getWidth())
-      .attr("height", 50)
+      .attr("width", gds_width)
+      .attr("height", b.h)
       .attr("id", "trail");
     // Add the label at the end, for the percentage.
     trail.append("svg:text")
@@ -382,26 +430,29 @@ function drawText(params) {
     .attr('fill', base_font_color)
     .attr("font-size", params.fontsize)
     .text(params.text)
-    .attr('x', (Math.min(width, height) + margin.left) / 2)
-    .attr('y', (Math.min(width, height) + margin.top + b.h) / params.y_corr)
+    .attr('x', (rect_base + margin.left) / 2)
+    .attr('y', (rect_base + margin.top) / params.y_corr)
 }
 // Fade all but the current sequence, and show it in the breadcrumb trail.
 function drawLegend() {
-
-  // Dimensions of legend item: width, height, spacing, radius of rounded rect.
-  var li = {
-    w: 75, h: 30, s: 3, r: 3
-  };
-
-  var legend = d3.select("#legend").append("svg:svg")
+  // move end node to the last item in legend list
+  var ro_cats = []
+  for( var i = 0; i < cats.length-1; i++){ 
+    if ( cats[i] !== 'end') {
+      ro_cats.push(cats[i]); 
+    }
+  }
+  ro_cats.push('end')
+  var legend = d3.select("#legend")
+    .append("svg:svg")
     .attr("width", li.w)
-    .attr("height", d3.keys(colors).length * (li.h + li.s));
+    .attr("height", (ro_cats.length * (li.h + li.s) + margin.top));
 
   var g = legend.selectAll("g")
-    .data(d3.entries(colors))
+    .data(ro_cats)
     .enter().append("svg:g")
     .attr("transform", function (d, i) {
-      return "translate(0," + i * (li.h + li.s) + ")";
+      return "translate(" + (0) + ',' + (i * (li.h + li.s) + margin.top) + ")";
     });
 
   g.append("svg:rect")
@@ -409,14 +460,17 @@ function drawLegend() {
     .attr("ry", li.r)
     .attr("width", li.w)
     .attr("height", li.h)
-    .style("fill", function (d) { return d.value; });
+    .style("fill", function (d) { return myColor(d); });
 
   g.append("svg:text")
     .attr("x", li.w / 2)
     .attr("y", li.h / 2)
     .attr("dy", "0.35em")
     .attr("text-anchor", "middle")
-    .text(function (d) { return d.key; });
+    .attr('font-family', base_font)
+    .attr("font-size", bc_font_size)
+    .style('fill', bc_font_color)
+    .text(function (d) { return d; });
 }
 
 function buildHierarchy(parsedData) {
@@ -428,7 +482,8 @@ function buildHierarchy(parsedData) {
     var size = +parsedData[i]['goal1'];
     // add if secondary goal defined
     if (goal_name_secondary !== undefined) {
-      var value_secondary = + +parsedData[i]['goal2']
+      var value_secondary = +parsedData[i]['goal2']
+      tot_cvalue += value_secondary
     }
     var parts = sequence.split(" > ");
     parts.push("end")

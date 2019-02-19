@@ -1,10 +1,10 @@
 {
   "name": "Path sequence viz - sunburst",
-  "logoUrl": "http://www.google.com",
-  "organization": "Data Studio Developer Relations",
-  "supportUrl": "https://datastudio.google.com",
-  "packageUrl": "https://datastudio.google.com",
-  "description": "Viz for top conversion paths",
+  "logoUrl": "http://url",
+  "organization": "Jyri Sihvo, reaktor.com",
+  "supportUrl": "https://github.com/jps2/gds-sequences-viz",
+  "packageUrl": "https://github.com/jps2/gds-sequences-viz",
+  "description": "Viz for GA top conversion paths",
   "devMode": true,
   "components": [
     {

@@ -6,7 +6,10 @@
   "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack --config webpack.config.js; cp src/index.json dist/index.json; cp manifest.json dist/manifest.json; cp src/index.css dist/index.css"
+    "build:prod": "webpack --config webpack.config.js; cp src/index.json dist/index.json; cp manifest.json dist/manifest.json; cp src/index.css dist/index.css",
+    "build:dev": "webpack --config webpack.config.dev.js; cp src/index.json dev/index.json; cp manifest.dev.json dev/manifest.json; cp src/index.css dev/index.css",
+    "deploy:prod": "npm run build:prod; gsutil cp -a public-read dist/* gs://path-sequence-viz",
+    "deploy:dev": "npm run build:dev; gsutil cp -a public-read dev/* gs://path-sequence-viz/dev"
   },
   "keywords": [],
   "author": "",

@@ -58,6 +58,7 @@ var goal_name; // get primary goal name from the fields
 var goal_name_secondary; // secondary goal 
 var valuekiloFormat = d3.format(".3s")
 var valueFormat = d3.format(".0f")
+var percFormat = d3.format(".2%")
 var base_font, base_font_color, base_font_size;
 var bc_font_size, bc_font_color, color_scheme;
 var gds_height, gds_width, rect_base
@@ -82,12 +83,13 @@ function drawViz(data) {
   bc_font_color = styleByConfigId.bc_font_color.value.color !== undefined ? styleByConfigId.bc_font_color.value.color : styleByConfigId.bc_font_color.defaultValue
   color_scheme = styleByConfigId.color_scheme.value !== undefined ? styleByConfigId.color_scheme.value : styleByConfigId.color_scheme.defaultValue
   show_legend = styleByConfigId.show_legend.value !== undefined ? styleByConfigId.show_legend.value : styleByConfigId.show_legend.defaultValue
+
   // read data
   var parsedData = dataByConfigId.map(function (d) {
     return {
       path_sequence: d['sequences'][0],
-      goal1: +d.goals[0],
-      goal2: +d.goals[1]
+      goal1: +d.goals[0], // primary
+      goal2: +d.goals[1] // secondary goal
     };
   });
   tot_cvalue = 0; // have to reset, if metrics changed
@@ -99,8 +101,8 @@ function drawViz(data) {
   gds_width = dscc.getWidth()
 
   // for the sunburst rect
-  height = gds_height - margin.top - margin.bottom - b.h;
-  width = gds_width - margin.left - margin.right - li.w;
+  height = gds_height - margin.top - margin.bottom - b.h; // subtract breadcrumb height
+  width = gds_width - margin.left - margin.right - li.w; // subtract legend width
   radius = Math.min(width, height) / 2;
   rect_base = Math.min(width, height)
 
@@ -112,21 +114,19 @@ function drawViz(data) {
     .selectAll('#explanation')
     .remove();
 
-    d3.select('body')
+  d3.select('body')
     .selectAll('div')
-    .remove();  
+    .remove();
 
   var div_data = [
     { "id": "sequence", "height": b.h, "width": gds_width },
-    { "id": "chart_row", "height": (height + margin.top + margin.bottom), "width": (gds_width ) }
+    { "id": "chart_row", "height": (height + margin.top + margin.bottom), "width": (gds_width) }
   ]
 
-    var divchart_data = [
-      { "id": "chart", "height": (height + margin.top + margin.bottom), "width": (rect_base + margin.left) },
-      { "id": "legend", "height": (height + margin.top + margin.bottom), "width": (li.w + margin.right) }
-    ]
-
-
+  var divchart_data = [
+    { "id": "chart", "height": (height + margin.top + margin.bottom), "width": (rect_base + margin.left) },
+    { "id": "legend", "height": (height + margin.top + margin.bottom), "width": (li.w + margin.right) }
+  ]
 
   var grid = d3.select("body")
     .selectAll('div')
@@ -178,7 +178,7 @@ function createVisualization(json) {
     .attr("height", (rect_base + margin.top))
     .append("svg:g")
     .attr("id", "container")
-    .attr("transform", "translate(" + (rect_base + margin.left) / 2 + "," + (rect_base / 2 + margin.top)+ ")");
+    .attr("transform", "translate(" + (rect_base + margin.left) / 2 + "," + (rect_base / 2 + margin.top) + ")");
 
   var partition = d3.partition()
     .size([2 * Math.PI, radius * radius]);
@@ -190,7 +190,6 @@ function createVisualization(json) {
     .outerRadius(function (d) { return Math.sqrt(d.y1); });
 
   initializeBreadcrumbTrail();
-
 
   // Bounding circle underneath the sunburst, to make it easier to detect
   // when the mouse leaves the parent g.
@@ -227,7 +226,13 @@ function createVisualization(json) {
   if (show_legend) {
     drawLegend();
   }
-  drawText({ select: ".pct", o_class: "pct", fontsize: base_font_size * 4 + 'px', text: valuekiloFormat(totalSize), y_corr: 2 });
+  drawText({
+    select: ".pct",
+    o_class: "pct",
+    fontsize: base_font_size * 4 + 'px',
+    text: valuekiloFormat(totalSize),
+    y_corr: 2
+  });
   drawText({
     select: ".exp",
     o_class: "exp",
@@ -244,6 +249,7 @@ function createVisualization(json) {
       y_corr: 1.7
     });
   }
+
   function mouseover(d) {
     function arraySum(obj) {
       var all_sum = 0;
@@ -256,7 +262,7 @@ function createVisualization(json) {
       }
       return all_sum;
     }
-    var percFormat = d3.format(".2%")
+
     var percentage = d.value / totalSize;
     var percentageString = percFormat(percentage);
     if (percentage < 0.001) {
@@ -264,22 +270,23 @@ function createVisualization(json) {
     }
 
     path_value = valuekiloFormat(arraySum(d.data));
-    if (d.value > 1000) {
-      path_size = valuekiloFormat(d.value);
-    } else {
-      path_size = valueFormat(d.value)
-    }
+    path_size = d.value > 1000 ? valuekiloFormat(d.value) : valueFormat(d.value)
 
     d3.selectAll('.pct')
       .remove()
+
     d3.selectAll('.exp')
       .remove()
-    drawText({ select: ".pct", o_class: "pct", fontsize: base_font_size * 4 + 'px', text: path_size, y_corr: 2 });
-    if (goal_name_secondary !== undefined) {
-      var valp_string = ', ' + path_value + ' €'
-    } else {
-      var valp_string = ''
-    }
+
+    drawText({
+      select: ".pct",
+      o_class: "pct",
+      fontsize: base_font_size * 4 + 'px',
+      text: path_size,
+      y_corr: 2
+    });
+
+    var valp_string = goal_name_secondary !== undefined ? ', ' + path_value + ' €' : ''
     drawText({
       select: ".exp",
       o_class: "exp",
@@ -323,14 +330,31 @@ function createVisualization(json) {
       .remove()
     d3.selectAll('.exp')
       .remove()
-    drawText({ select: ".pct", o_class: "pct", fontsize: base_font_size * 4 + 'px', text: valuekiloFormat(totalSize), y_corr: 2 });
-    drawText({ select: ".exp", o_class: "exp", fontsize: base_font_size * 1 + 'px', text: goal_name + ' in all paths', y_corr: 1.8 });
-    if (goal_name_secondary !== undefined) {
-      var val_string = valuekiloFormat(tot_cvalue) + ' €'
-    } else {
-      var val_string = ''
-    }
-    drawText({ select: ".exp", o_class: "exp", fontsize: base_font_size * 1 + 'px', text: val_string, y_corr: 1.7 });
+
+    drawText({
+      select: ".pct",
+      o_class: "pct",
+      fontsize: base_font_size * 4 + 'px',
+      text: valuekiloFormat(totalSize),
+      y_corr: 2
+    });
+    drawText({
+      select: ".exp",
+      o_class: "exp",
+      fontsize: base_font_size * 1 + 'px',
+      text: goal_name + ' in all paths',
+      y_corr: 1.8
+    });
+
+    var val_string = goal_name_secondary !== undefined ? valuekiloFormat(tot_cvalue) + ' €' : ''
+
+    drawText({
+      select: ".exp",
+      o_class: "exp",
+      fontsize: base_font_size * 1 + 'px',
+      text: val_string,
+      y_corr: 1.7
+    });
 
     // Transition each segment to full opacity and then reactivate it.
     d3.selectAll("path")
@@ -437,9 +461,9 @@ function drawText(params) {
 function drawLegend() {
   // move end node to the last item in legend list
   var ro_cats = []
-  for( var i = 0; i < cats.length-1; i++){ 
-    if ( cats[i] !== 'end') {
-      ro_cats.push(cats[i]); 
+  for (var i = 0; i < cats.length - 1; i++) {
+    if (cats[i] !== 'end') {
+      ro_cats.push(cats[i]);
     }
   }
   ro_cats.push('end')

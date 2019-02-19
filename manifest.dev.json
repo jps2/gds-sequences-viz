@@ -1,21 +1,21 @@
 {
-  "name": "Path sequence viz - sunburst",
+  "name": "DEV: Path sequence viz - sunburst",
   "logoUrl": "http://url",
   "organization": "Jyri Sihvo, reaktor.com",
   "supportUrl": "https://github.com/jps2/gds-sequences-viz",
   "packageUrl": "https://github.com/jps2/gds-sequences-viz",
-  "description": "Viz for GA top conversion paths",
+  "description": "DEV: Viz for GA top conversion paths",
   "devMode": true,
   "components": [
     {
       "name": "conversion_paths",
-      "description": "Viz for top conversion paths",
+      "description": "DEV: Viz for top conversion paths",
       "iconUrl": "https://url",
       "devMode": true,
       "resource": {
-          "js": "gs://path-sequence-viz/index.js",
-          "config": "gs://path-sequence-viz/index.json",
-          "css": "gs://path-sequence-viz/index.css"
+          "js": "gs://path-sequence-viz/dev/index.js",
+          "config": "gs://path-sequence-viz/dev/index.json",
+          "css": "gs://path-sequence-viz/dev/index.css"
       }
     }
   ]

@@ -63,14 +63,15 @@ var base_font, base_font_color, base_font_size;
 var bc_font_size, bc_font_color, color_scheme;
 var gds_height, gds_width, rect_base
 var myColor
-var show_legend
+var show_legend, hideEndpoint, sequence_levels, sequence_separator
 
 function drawViz(data) {
 
   var dataByConfigId = data.tables.DEFAULT;
   var fieldsByConfigId = data.fields;
   var styleByConfigId = data.style;
-  //console.log(styleByConfigId)
+  //console.log(JSON.stringify(dataByConfigId, null, 2))
+  console.log(JSON.stringify(styleByConfigId, null, 2))
   goal_name = fieldsByConfigId.goals[0].name.toLowerCase() // primary goal
   // if two goals add it
   goal_name_secondary = fieldsByConfigId.goals.length == 2 ? fieldsByConfigId.goals[1].name.toLowerCase() : undefined;
@@ -78,11 +79,13 @@ function drawViz(data) {
   // style settings
   base_font = styleByConfigId.base_font.value !== undefined ? styleByConfigId.base_font.value : styleByConfigId.base_font.defaultValue
   base_font_size = styleByConfigId.base_font_size.value !== undefined ? styleByConfigId.base_font_size.value : styleByConfigId.base_font_size.defaultValue
-  base_font_color = styleByConfigId.base_font_color.value.color !== undefined ? styleByConfigId.base_font_color.value.color : styleByConfigId.base_font_color.defaultValue
+  base_font_color = styleByConfigId.base_font_color.value.color !== undefined ? styleByConfigId.base_font_color.value.color : "#000000"
   bc_font_size = styleByConfigId.bc_font_size.value !== undefined ? styleByConfigId.bc_font_size.value : styleByConfigId.bc_font_size.defaultValue
-  bc_font_color = styleByConfigId.bc_font_color.value.color !== undefined ? styleByConfigId.bc_font_color.value.color : styleByConfigId.bc_font_color.defaultValue
-  color_scheme = styleByConfigId.color_scheme.value !== undefined ? styleByConfigId.color_scheme.value : styleByConfigId.color_scheme.defaultValue
+  bc_font_color = styleByConfigId.bc_font_color.value.color !== undefined ? styleByConfigId.bc_font_color.value.color : "#000000"
+  color_scheme = styleByConfigId.color_scheme.value !== undefined ? styleByConfigId.color_scheme.value : 'schemeSet1'
   show_legend = styleByConfigId.show_legend.value !== undefined ? styleByConfigId.show_legend.value : styleByConfigId.show_legend.defaultValue
+  hideEndpoint = styleByConfigId.hide_endpoint.value !== undefined ? styleByConfigId.hide_endpoint.value : styleByConfigId.hide_endpoint.defaultValue
+  // setup the number of sequences to be show
 
   // read data
   var parsedData = dataByConfigId.map(function (d) {
@@ -215,7 +218,7 @@ function createVisualization(json) {
     .attr("d", arc)
     .attr("fill-rule", "evenodd")
     .style("fill", function (d) { return myColor(d.data.name); })
-    .style("opacity", 1)
+    .style("opacity", function (d) { return endarcOpacity(d.data.name, 1, 0) })
     .on("mouseover", mouseover);
 
   // Add the mouseleave handler to the bounding circle.
@@ -300,7 +303,7 @@ function createVisualization(json) {
       fontsize: base_font_size * 1 + 'px',
       text: 'in this path sequence',
       y_corr: 1.7
-    });
+    })
 
     var sequenceArray = d.ancestors().reverse();
     sequenceArray.shift(); // remove root node from the array
@@ -308,14 +311,14 @@ function createVisualization(json) {
 
     // Fade all the segments.
     d3.selectAll("path")
-      .style("opacity", 0.3);
+      .style("opacity", function (d) { return endarcOpacity(d.data.name, 0.3, 0) });
 
     // Then highlight only those that are an ancestor of the current segment.
     vis.selectAll("path")
       .filter(function (node) {
         return (sequenceArray.indexOf(node) >= 0);
       })
-      .style("opacity", 1);
+      .style("opacity", function (d) { return endarcOpacity(d.data.name, 1, 0.05) });
   }
 
   // Restore everything to full opacity when moving off the visualization.
@@ -360,7 +363,7 @@ function createVisualization(json) {
     d3.selectAll("path")
       .transition()
       .duration(1000)
-      .style("opacity", 1)
+      .style("opacity", function (d) { return endarcOpacity(d.data.name, 1, 0) })
       .on("end", function () {
         d3.select(this).on("mouseover", mouseover);
       });
@@ -395,13 +398,13 @@ function createVisualization(json) {
 
   // Update the breadcrumb trail to show the current sequence and percentage.
   function updateBreadcrumbs(nodeArray, percentageString) {
-
     // Data join; key function combines name and depth (= position in sequence).
     var trail = d3.select("#trail")
       .selectAll("g")
+      //data.filter(function(d){return d.category == category;
       .data(nodeArray, function (d) { return d.data.name + d.depth; });
 
-    // Remove exiting nodes.
+    // Remove existing nodes.
     trail.exit().remove();
 
     // Add breadcrumb and label for entering nodes.
@@ -409,7 +412,8 @@ function createVisualization(json) {
 
     entering.append("svg:polygon")
       .attr("points", breadcrumbPoints)
-      .style("fill", function (d) { return myColor(d.data.name); });
+      .style("fill", function (d) { return myColor(d.data.name); })
+      .style("opacity", function (d) { return endarcOpacity(d.data.name, 1, 0.2)})
 
     entering.append("svg:text")
       .attr("x", (b.w + b.t) / 2)
@@ -427,6 +431,9 @@ function createVisualization(json) {
     });
 
     // Now move and update the percentage at the end.
+    // if hide and in the end node length-1, end label opa 0
+    // change string to ..end with this sequence tjsp
+    //console.log(nodeArray[nodeArray.length-1])
     d3.select("#trail").select("#endlabel")
       .attr("x", (nodeArray.length + 0.2) * (b.w + b.s))
       .attr("y", b.h / 2)
@@ -443,6 +450,15 @@ function createVisualization(json) {
 
   }
 };
+
+function endarcOpacity(param, def_opa, end_opa) {
+  var opac = def_opa
+  if (hideEndpoint) {
+    return param == 'end' ? end_opa : def_opa
+  } else {
+    return opac
+  }
+}
 
 function drawText(params) {
   // function(d){return d3.rgb(d.color).darker(1);})
@@ -484,7 +500,8 @@ function drawLegend() {
     .attr("ry", li.r)
     .attr("width", li.w)
     .attr("height", li.h)
-    .style("fill", function (d) { return myColor(d); });
+    .style("fill", function (d) { return myColor(d); })
+    .style("opacity", function (d) { return endarcOpacity(d, 1, 0.2)})
 
   g.append("svg:text")
     .attr("x", li.w / 2)
@@ -531,7 +548,7 @@ function buildHierarchy(parsedData) {
               break;
             }
           }
-          // If we don't already have a child node for this branch, create it.
+          // If we don't already have a child node for this branch, create it. MOVE this above!!!
           if (!foundChild) {
             childNode = { "name": nodeName, "children": [] };
             //console.log(childNode)

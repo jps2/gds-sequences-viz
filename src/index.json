@@ -46,8 +46,7 @@
         {
           "id": "base_font_color",
           "label": "Font color",
-          "type": "FONT_COLOR",
-          "defaultValue": "#000000"
+          "type": "FONT_COLOR"
         }        
 
       ]
@@ -65,15 +64,20 @@
         {
           "id": "bc_font_color",
           "label": "Breadcrumb label and legend color",
-          "type": "FONT_COLOR",
-          "defaultValue": "#000000"
+          "type": "FONT_COLOR"
         },
         {
           "id": "show_legend",
           "label": "Show legend?",
           "type": "CHECKBOX",
           "defaultValue": "false"
-        }
+        },
+        {
+          "id": "hide_endpoint",
+          "label": "Hide the end point arc",
+          "type": "CHECKBOX",
+          "defaultValue": "false"
+        }      
       ]
     },
     {
